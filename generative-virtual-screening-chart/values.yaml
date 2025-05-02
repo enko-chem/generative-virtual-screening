@@ -121,9 +121,13 @@ persistence:
   hostPath: /data/nim
   size: 1.5Ti
 
-nodeSelector: {}
+nodeSelector:
+  node.kubernetes.io/instance-type: g6e.12xlarge
 
-tolerations: []
+tolerations:
+- key: nvidia.com/gpu
+  operator: Exists
+  effect: NoSchedule
 
 affinity: {}
  
