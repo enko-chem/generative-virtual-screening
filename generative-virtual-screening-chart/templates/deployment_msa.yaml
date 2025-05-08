@@ -53,8 +53,8 @@ spec:
             - name: NGC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.imagePullSecret.secretName }}
-                  key: {{ .Values.imagePullSecret.secretKey }}
+                  name: {{ .Values.apiSecret.secretName }}
+                  key: {{ .Values.apiSecret.secretKey }}
             - name: NIM_CACHE_PATH
               value: {{ .Values.msa.cacheFolder | quote }}
             - name: NIM_API_PORT
