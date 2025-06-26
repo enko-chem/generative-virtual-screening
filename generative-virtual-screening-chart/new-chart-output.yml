@@ -1,0 +1,201 @@
+---
+# Source: generative-virtual-screening-chart/templates/pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  # ? what keeps the pv and/pvc around after the chart is deleted? looks like nothing currently does
+  # TODO: make pv (and pvc?) survive the chart deletion
+  # TODO: change to the correct pv name
+  name: pv1
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    # TODO: change to the correct instance name: msa
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  capacity:
+    # TODO: change to the correct storage size?
+    storage: "3Ti"
+  accessModes:
+  - "ReadWriteMany"
+  # TODO: change to the correct storage class name?
+  # ? for high iops what do we need to change?
+  storageClassName: standard
+  # TODO: change to the correct host path?
+  hostPath:
+    path: "/mnt/k8s-disks/0"
+---
+# Source: generative-virtual-screening-chart/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # TODO: change to the correct pvc name: msa-vol
+  name: gvs-shared-vol
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  # TODO: change to the correct pv name: ???
+  # ?: how to name a pv?
+  volumeName: pv1
+  accessModes:
+  - "ReadWriteMany"
+  # ? why is storageClassName here and on the pv as well?
+  storageClassName: standard
+  resources:
+    requests:
+      storage: "3Ti"
+---
+# Source: generative-virtual-screening-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvsp-generative-virtual-screening-chart-msa
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    targetPort: 8000
+    protocol: TCP
+    name: "msa-port"
+  selector:
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/component: msa
+---
+# Source: generative-virtual-screening-chart/templates/deployment_msa.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: msa-gvsp
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generative-virtual-screening-chart
+      app.kubernetes.io/instance: gvsp
+      app.kubernetes.io/component: msa
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generative-virtual-screening-chart
+        app.kubernetes.io/instance: gvsp
+        app.kubernetes.io/component: msa
+    spec:
+      imagePullSecrets:
+      - name: ngc-secret
+      securityContext: {}
+      initContainers:
+      - name: volume-permissions
+        image: busybox:1.31.1
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p "/opt/nim/.cache" && 
+          chmod -R 777 "/opt/nim/.cache"
+        volumeMounts:
+        # TODO: change to the correct volume name: msa-pv1
+        - name: msa-pv1
+          mountPath: "/opt/nim/.cache"
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: msa
+        securityContext: {}
+        image: "nvcr.io/nim/colabfold/msa-search:1.0"
+        imagePullPolicy: Always
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api
+              key: NGC_API_KEY
+        - name: NIM_CACHE_PATH
+          value: "/opt/nim/.cache"
+        - name: NIM_API_PORT
+          value: "8000"
+        - name: NIM_GLOBAL_MAX_MSA_SEQUENCES
+          value: "100"
+        - name: NIM_DISABLE_GPU_SERVER
+          value: "True"
+        volumeMounts:
+        - mountPath: "/opt/nim/.cache"
+          # TODO: change to the correct volume name: msa-pv1
+          name: msa-pv1
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        startupProbe:
+          httpGet:
+            path: /v1/health/ready
+            port: 8000
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          failureThreshold: 1410 # 235 minutes
+        livenessProbe:
+          initialDelaySeconds: 0
+          httpGet:
+            path: /v1/health/live
+            port: 8000
+        readinessProbe:
+          initialDelaySeconds: 0
+          httpGet:
+            path: /v1/health/ready
+            port: 8000
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            nvidia.com/gpu: 1
+      volumes:
+      - name: msa-pv1
+        persistentVolumeClaim:
+          claimName: gvs-shared-vol
+      nodeSelector:
+        # TODO: change to the correct node type
+        node.kubernetes.io/instance-type: g6e.12xlarge
+      tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
+---
+# Source: generative-virtual-screening-chart/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "gvsp-generative-virtual-screening-chart-test-connection"
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+  - name: wget
+    image: busybox
+    command: [ 'wget' ]
+    args: [ 'gvsp-generative-virtual-screening-chart:' ]
+  restartPolicy: Never

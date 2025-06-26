@@ -1,0 +1,622 @@
+NAME: gvsp
+LAST DEPLOYED: Tue May 27 15:17:27 2025
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+USER-SUPPLIED VALUES:
+{}
+
+COMPUTED VALUES:
+affinity: {}
+apiSecret:
+  name: ngc-api
+  secretKey: NGC_API_KEY
+  secretName: ngc-api
+autoscaling:
+  enabled: false
+  maxReplicas: 100
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+diffdock:
+  cacheFolder: /opt/nim/.cache
+  containerName: diffdock
+  containerPort: 8000
+  pullPolicy: Always
+  repository: nvcr.io/nim/mit/diffdock
+  servicePort: 8084
+  tag: "2.0"
+  tritonPort: 8003
+fullnameOverride: ""
+genmol:
+  cacheFolder: /opt/nim/.cache
+  containerName: genoml
+  containerPort: 8000
+  pullPolicy: Always
+  repository: nvcr.io/nim/nvidia/genmol
+  servicePort: 8083
+  tag: "1.0"
+imagePullSecret:
+  create: false
+  name: ngc-secret
+ingress:
+  annotations: {}
+  className: ""
+  enabled: false
+  hosts:
+  - host: chart-example.local
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+  tls: []
+msa:
+  cacheFolder: /opt/nim/.cache
+  containerName: msa
+  containerPort: 8000
+  pullPolicy: Always
+  repository: nvcr.io/nim/colabfold/msa-search
+  servicePort: 8081
+  tag: "1.0"
+nameOverride: ""
+nodeSelector:
+  node.kubernetes.io/instance-type: g6e.12xlarge
+openfold2:
+  cacheFolder: /opt/nim/.cache
+  containerName: openfold2
+  containerPort: 8000
+  pullPolicy: Always
+  repository: nvcr.io/nim/openfold/openfold2
+  servicePort: 8082
+  tag: "1.0"
+persistence:
+  accessMode: ReadWriteMany
+  enabled: true
+  existingClaim: ""
+  hostPath: /mnt/k8s-disks/0
+  size: 3Ti
+  storageClass: standard
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources:
+  limits:
+    nvidia.com/gpu: 1
+  requests:
+    nvidia.com/gpu: 1
+securityContext: {}
+service:
+  type: ClusterIP
+tolerations:
+- effect: NoSchedule
+  key: nvidia.com/gpu
+  operator: Exists
+
+HOOKS:
+---
+# Source: generative-virtual-screening-chart/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "gvsp-generative-virtual-screening-chart-test-connection"
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['gvsp-generative-virtual-screening-chart:']
+  restartPolicy: Never
+MANIFEST:
+---
+# Source: generative-virtual-screening-chart/templates/pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  capacity:
+    storage: "3Ti"
+  accessModes:
+    - "ReadWriteMany"
+  storageClassName: standard
+  hostPath:
+    path: "/mnt/k8s-disks/0"
+---
+# Source: generative-virtual-screening-chart/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gvs-shared-vol
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  volumeName: pv1
+  accessModes:
+    - "ReadWriteMany"
+  storageClassName: standard
+  resources:
+    requests:
+      storage: "3Ti"
+---
+# Source: generative-virtual-screening-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvsp-generative-virtual-screening-chart-msa
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: 8000
+      protocol: TCP
+      name: "msa-port"
+  selector:
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/component: msa
+---
+# Source: generative-virtual-screening-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvsp-generative-virtual-screening-chart-openfold2
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: 8000
+      protocol: TCP
+      name: "openfold2-port"
+  selector:
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/component: openfold2
+---
+# Source: generative-virtual-screening-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvsp-generative-virtual-screening-chart-genmol
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8083
+      targetPort: 8000
+      protocol: TCP
+      name: "genmol-port"
+  selector:
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/component: genmol
+---
+# Source: generative-virtual-screening-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gvsp-generative-virtual-screening-chart-diffdock
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8084
+      targetPort: 8000
+      protocol: TCP
+      name: "diffdock-port"
+  selector:
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/component: diffdock
+---
+# Source: generative-virtual-screening-chart/templates/deployment_diffdock.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diffdock-gvsp
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: diffdock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generative-virtual-screening-chart
+      app.kubernetes.io/instance: gvsp
+      app.kubernetes.io/component: diffdock
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generative-virtual-screening-chart
+        app.kubernetes.io/instance: gvsp
+        app.kubernetes.io/component: diffdock
+    spec:
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        {}
+      containers:
+        - name: diffdock
+          securityContext:
+            {}
+          image: "nvcr.io/nim/mit/diffdock:2.0"
+          imagePullPolicy: Always
+          env:
+            - name: NGC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ngc-api
+                  key: NGC_API_KEY
+            - name: NIM_DISABLE_MODEL_DOWNLOAD
+              value: "False"
+            - name: NIM_HTTP_TRITON_PORT
+              value: "8003"
+            - name: TRITON_HTTP_PORT
+              value: "8003"
+            - name: NIM_API_PORT
+              value: "8000"
+            - name: NIM_TRITON_LOG_VERBOSE
+              value: "1"
+            - name: DD_USE_BF16
+              value: "1"
+            - name: NIM_CACHE_PATH
+              value: /opt/nim/.cache
+            - name: NIM_LOG_LEVEL
+              value: "DEBUG"
+          volumeMounts:
+          - mountPath : "/opt/nim/.cache"
+            name: diffdock-pv1
+          command: ["/opt/nim/start_server.sh"]
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            failureThreshold: 240 # 40 minutes
+          livenessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/live
+              port: 8000
+          readinessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+      volumes:
+        - name: diffdock-pv1
+          persistentVolumeClaim:
+            claimName: gvs-shared-vol
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6e.12xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+---
+# Source: generative-virtual-screening-chart/templates/deployment_genmol.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genmol-gvsp
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: genmol
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generative-virtual-screening-chart
+      app.kubernetes.io/instance: gvsp
+      app.kubernetes.io/component: genmol
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generative-virtual-screening-chart
+        app.kubernetes.io/instance: gvsp
+        app.kubernetes.io/component: genmol
+    spec:
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        {}
+      containers:
+        - name: genoml
+          securityContext:
+            {}
+          image: "nvcr.io/nim/nvidia/genmol:1.0"
+          imagePullPolicy: Always
+          env:
+            - name: NGC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ngc-api
+                  key: NGC_API_KEY
+            - name: NIM_CACHE_PATH
+              value: /opt/nim/.cache
+            - name: NIM_API_PORT
+              value: "8000"
+          volumeMounts:
+          - mountPath : "/opt/nim/.cache"
+            name: genmol-pv1
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            failureThreshold: 150 # 25 minutes
+          livenessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/live
+              port: 8000
+          readinessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+      volumes:
+        - name: genmol-pv1
+          persistentVolumeClaim:
+            claimName: gvs-shared-vol
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6e.12xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+---
+# Source: generative-virtual-screening-chart/templates/deployment_msa.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: msa-gvsp
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: msa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generative-virtual-screening-chart
+      app.kubernetes.io/instance: gvsp
+      app.kubernetes.io/component: msa
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generative-virtual-screening-chart
+        app.kubernetes.io/instance: gvsp
+        app.kubernetes.io/component: msa
+    spec:
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        {}
+      initContainers:
+        - name: volume-permissions
+          image: busybox:1.31.1
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p "/opt/nim/.cache" &&
+              chmod -R 777 "/opt/nim/.cache"
+          volumeMounts:
+            - name: msa-pv1
+              mountPath: "/opt/nim/.cache"
+          securityContext:
+            runAsUser: 0
+      containers:
+        - name: msa
+          securityContext:
+            {}
+          image: "nvcr.io/nim/colabfold/msa-search:1.0"
+          imagePullPolicy: Always
+          env:
+            - name: NGC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ngc-api
+                  key: NGC_API_KEY
+            - name: NIM_CACHE_PATH
+              value: "/opt/nim/.cache"
+            - name: NIM_API_PORT
+              value: "8000"
+            - name: NIM_GLOBAL_MAX_MSA_SEQUENCES
+              value: "100"
+            - name: NIM_DISABLE_GPU_SERVER
+              value: "True"
+          volumeMounts:
+            - mountPath : "/opt/nim/.cache"
+              name: msa-pv1
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            failureThreshold: 1410 # 235 minutes
+          livenessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/live
+              port: 8000
+          readinessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+      volumes:
+        - name: msa-pv1
+          persistentVolumeClaim:
+            claimName: gvs-shared-vol
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6e.12xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+---
+# Source: generative-virtual-screening-chart/templates/deployment_openfold2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openfold2-gvsp
+  labels:
+    helm.sh/chart: generative-virtual-screening-chart-0.1.0
+    app.kubernetes.io/name: generative-virtual-screening-chart
+    app.kubernetes.io/instance: gvsp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: openfold2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generative-virtual-screening-chart
+      app.kubernetes.io/instance: gvsp
+      app.kubernetes.io/component: openfold2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generative-virtual-screening-chart
+        app.kubernetes.io/instance: gvsp
+        app.kubernetes.io/component: openfold2
+    spec:
+      imagePullSecrets:
+        - name: ngc-secret
+      securityContext:
+        {}
+      containers:
+        - name: openfold2
+          securityContext:
+            {}
+          image: "nvcr.io/nim/openfold/openfold2:1.0"
+          imagePullPolicy: Always
+          env:
+            - name: NGC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ngc-api
+                  key: NGC_API_KEY
+            - name: NIM_CACHE_EXTERNAL
+              value: /opt/nim/.cache
+            - name: NIM_API_PORT
+              value: "8000"
+          volumeMounts:
+          - mountPath : "/opt/nim/.cache"
+            name: openfold2-pv1
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            failureThreshold: 330 # 55 minutes
+          livenessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/live
+              port: 8000
+          readinessProbe:
+            initialDelaySeconds: 0
+            httpGet:
+              path: /v1/health/ready
+              port: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+      volumes:
+        - name: openfold2-pv1
+          persistentVolumeClaim:
+            claimName: gvs-shared-vol
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6e.12xlarge
+      tolerations:
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
