@@ -2,7 +2,7 @@
 {{- $labels := include "generative-virtual-screening-chart.labels" . -}}
 {{- $selectorLabels := include "generative-virtual-screening-chart.selectorLabels" . -}}
 
-{{- $services := list "msa" "openfold2" "genmol" "diffdock" -}}
+{{- $services := list "msa" -}}
 
 {{- range $serviceName := $services }}
 ---

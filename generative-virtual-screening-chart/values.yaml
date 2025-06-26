@@ -11,34 +11,6 @@ msa:
   cacheFolder: /opt/nim/.cache
   servicePort: 8081
 
-openfold2:
-  containerName: openfold2
-  containerPort: 8000
-  repository: nvcr.io/nim/openfold/openfold2
-  tag: "1.0"
-  pullPolicy: Always
-  cacheFolder: /opt/nim/.cache
-  servicePort: 8082
-
-genmol:
-  containerName: genoml
-  containerPort: 8000
-  repository: nvcr.io/nim/nvidia/genmol
-  tag: "1.0"
-  pullPolicy: Always
-  cacheFolder: /opt/nim/.cache
-  servicePort: 8083
-
-diffdock:
-  containerName: diffdock
-  containerPort: 8000
-  tritonPort: 8003
-  repository: nvcr.io/nim/mit/diffdock
-  tag: "2.0"
-  pullPolicy: Always
-  cacheFolder: /opt/nim/.cache
-  servicePort: 8084
-
 imagePullSecret:
   name: "ngc-secret"
   create: false
