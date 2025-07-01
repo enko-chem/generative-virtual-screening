@@ -7,7 +7,9 @@ metadata:
   # TODO: make pv (and pvc?) survive the chart deletion
   # TODO: change to the correct pv name
   name: pv1
+  #! name: msa-pv
   labels:
+    #! "helm.sh/resource-policy": keep
     helm.sh/chart: generative-virtual-screening-chart-0.1.0
     app.kubernetes.io/name: generative-virtual-screening-chart
     # TODO: change to the correct instance name: msa

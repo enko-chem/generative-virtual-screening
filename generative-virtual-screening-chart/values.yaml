@@ -88,10 +88,15 @@ persistence:
   # hostPath: /data/nim
   # hostPath: /mnt/md127
   hostPath: /mnt/k8s-disks/0
-  size: 3Ti
+  size: 1300Gi
+  # rationale
+  # https://docs.nvidia.com/nim/bionemo/msa-search/latest/support-matrix.html
 
 nodeSelector:
-  node.kubernetes.io/instance-type: g6e.12xlarge
+  node.kubernetes.io/instance-type: g6e.8xlarge
+  # rationale for selecting size below
+  # https://docs.nvidia.com/nim/bionemo/msa-search/latest/support-matrix.html
+  # https://instances.vantage.sh/aws/ec2/g6e.8xlarge
 
 tolerations:
 - key: nvidia.com/gpu
